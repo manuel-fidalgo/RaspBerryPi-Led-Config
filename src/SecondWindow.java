@@ -2,6 +2,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -18,9 +19,11 @@ import javax.swing.JOptionPane;
 @SuppressWarnings("serial")
 public class SecondWindow extends JFrame{
 
-	int RED = 17;
+	int RED = 18;
 	int GREEN = 23;
 	int BLUE = 24;
+	public final String BASH_0 = "/bin/bash";
+	public final String BASH_1 = "-c";
 
 	private JPanel contentPane;
 	private  String colores[] = {"Black","Blue","Green","Turquoise","Red","Purple","Yellow","White","Exit"};
@@ -50,10 +53,19 @@ public class SecondWindow extends JFrame{
 	 * Create the frame.
 	 */
 	public SecondWindow() {
+		
+		try {
+			activarGPIO(RED);
+			activarGPIO(GREEN);
+			activarGPIO(BLUE);
+		} catch (IOException|InterruptedException e1) {
+			JOptionPane.showMessageDialog(null,"No se pudo activar el puerto solicitado");
+		}
+		setIconImage(Toolkit.getDefaultToolkit().getImage(this.getClass().getResource("icon.png")));
 		setTitle("Color led manager.");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 300, 300);
-		setResizable(false);
+		setBounds(100, 100, 400, 400);
+		//setResizable(false);
 		
 		JMenuBar menuBar = new JMenuBar();
 		menuBar.setBackground(Color.WHITE);
@@ -68,9 +80,9 @@ public class SecondWindow extends JFrame{
 		mntmPuertoLedRojo.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				String s = JOptionPane.showInputDialog("Red port:");
-				System.out.println(s);
 				try{
 					RED = Integer.parseInt(s);
+					activarGPIO(RED);
 				}catch(Exception ex){
 					JOptionPane.showMessageDialog(null, "Is not a valid port.");
 				}
@@ -86,6 +98,7 @@ public class SecondWindow extends JFrame{
 				System.out.println(s);
 				try{
 					GREEN = Integer.parseInt(s);
+					activarGPIO(GREEN);
 				}catch(Exception ex){
 					JOptionPane.showMessageDialog(null, "Is not a valid port.");
 				}
@@ -101,6 +114,7 @@ public class SecondWindow extends JFrame{
 				System.out.println(s);
 				try{
 					BLUE = Integer.parseInt(s);
+					activarGPIO(BLUE);
 				}catch(Exception ex){
 					JOptionPane.showMessageDialog(null, "Is not a valid port.");
 				}
@@ -112,9 +126,12 @@ public class SecondWindow extends JFrame{
 		menuBar.add(mnHelp);
 		
 		JMenuItem mntmShowHelp = new JMenuItem("Show help");
+		mntmShowHelp.setBackground(Color.WHITE);
 		mntmShowHelp.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				JOptionPane.showMessageDialog(null,"No help LOL");
+				String s;
+				s= "Port R:"+RED+" Port G: "+GREEN+" Port B: "+BLUE;
+				JOptionPane.showMessageDialog(null,s);
 			}
 		});
 		mnHelp.add(mntmShowHelp);
@@ -151,7 +168,7 @@ public class SecondWindow extends JFrame{
 					}else{
 						off();
 					}
-				}catch(IOException ex){
+				}catch(IOException | InterruptedException ex){
 					JOptionPane.showMessageDialog(null,"Runtime error: "+ex.getMessage());
 				}
 			}
@@ -169,56 +186,71 @@ public class SecondWindow extends JFrame{
 	}
 	/*Apaga ambos leds*/
 	//echo 1 > /sys/class/gpio/gpio17/value
-	public void black() throws IOException{
+	public void black() throws IOException, InterruptedException{
 		execCommand(0,RED);
 		execCommand(0,BLUE);
 		execCommand(0,GREEN);
 	}
 
 	/*Enciende el led Azul*/
-	public void blue() throws IOException{
+	public void blue() throws IOException, InterruptedException{
 		black();
 		execCommand(1,BLUE);
 
 	}
 	/*Enciende el led Verde*/
-	public void green() throws IOException {
+	public void green() throws IOException, InterruptedException {
 		black();
 		execCommand(1,GREEN);
 	}
 	/*Enciende el led Rojo*/
-	public void red() throws IOException{
+	public void red() throws IOException, InterruptedException{
 		black();
 		execCommand(1,RED);
 	}
-	public void turquoise() throws IOException{
+	public void turquoise() throws IOException, InterruptedException{
 		black();
 		execCommand(1,BLUE);
 		execCommand(1,GREEN);
 	}
 
-	public void purple() throws IOException{
+	public void purple() throws IOException, InterruptedException{
 		black();
 		execCommand(1,BLUE);
 		execCommand(1,RED);
 	}
-	public void yellow() throws IOException{
+	public void yellow() throws IOException, InterruptedException{
 		black();
 		execCommand(1,RED);
 		execCommand(1,GREEN);
 	}
-	public void white()throws IOException{
+	public void white()throws IOException, InterruptedException{
 		execCommand(1,RED);
 		execCommand(1,GREEN);
 		execCommand(1,BLUE);
 	}
-	public void off() throws IOException{
+	public void off() throws IOException, InterruptedException{
+		black();
 		System.exit(0);
 	}
-	private void  execCommand(int status, int puerto) throws IOException{
-		String command = "echo "+Integer.toString(status)+" > /sys/class/gpio/gpio"+Integer.toString(puerto)+"/value";
-		System.out.println(command);
+	private void  execCommand(int status, int puerto) throws IOException, InterruptedException{
+		String[] command = new String[3];
+		command[0] = BASH_0;
+		command[1] = BASH_1;
+		command[2] = "echo "+Integer.toString(status)+" > /sys/class/gpio/gpio"+Integer.toString(puerto)+"/value";
+		Process p = Runtime.getRuntime().exec(command);
+		p.waitFor();
+	}
+	private void activarGPIO(int pin) throws IOException, InterruptedException{
+		String[] command = new String[3];
+		command[0] = BASH_0;
+		command[1] = BASH_1;
+		command[2] = "echo "+Integer.toString(pin)+"> /sys/class/gpio/export";
+		Process p = Runtime.getRuntime().exec(command);
+		p.waitFor();
+		command[2]= "echo out > /sys/class/gpio/gpio"+Integer.toString(pin)+"/direction";
 		Runtime.getRuntime().exec(command);
+		p.waitFor();
 	}
 
 }
